@@ -72,10 +72,9 @@ func (c *HDLConfig) API_Pull(rw http.ResponseWriter, r *http.Request) {
 			id := r.URL.Query().Get("streamPath")
 			userId := str2number(r.URL.Query().Get("UserId"))
 			db := 	m7sdb.MysqlDB()
-			var olddevice Device
-
-			db.Where("id = ?", id).First(&olddevice)
-			if(olddevice.ID==""){
+			var count int64
+			db.Model(&Device{}).Where("id = ?", id).Count(&count)
+			if(count==0){
 				device := Device{ID: id, Type:1, RegisterTime: time.Now(), UserId: userId}
 				db.Create(&device)
 			}
