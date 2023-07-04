@@ -6,14 +6,12 @@ import (
 	"strings"
 	"time"
 
-	m7sdb "github.com/zzs89117920/m7s-db"
 	"go.uber.org/zap"
 	. "m7s.live/engine/v4"
 	"m7s.live/engine/v4/codec"
 	"m7s.live/engine/v4/config"
 	"m7s.live/engine/v4/util"
 )
-
 
 type HDLConfig struct {
 	config.HTTP
@@ -37,11 +35,6 @@ func (c *HDLConfig) OnEvent(event any) {
 		if url, ok := c.PullOnSub[v.Path]; ok {
 			pull(v.Path, url)
 		}
-	case SEclose://关闭流
-		testPath := v.StreamEvent.Target.Path
-		db := 	m7sdb.MysqlDB()
-		db.Delete(&Device{}, "id = ?", testPath)
-		HDLPlugin.Info("关闭流", zap.String("testPath", testPath))
 	}
 }
 
@@ -56,31 +49,11 @@ func str2number(s string) int {
 	}
 }
 
-type Device struct {
-	ID string
-	Type int
-	RegisterTime time.Time
-	UserId int
-}
 func (c *HDLConfig) API_Pull(rw http.ResponseWriter, r *http.Request) {
 	err := HDLPlugin.Pull(r.URL.Query().Get("streamPath"), r.URL.Query().Get("target"), NewHDLPuller(), str2number(r.URL.Query().Get("save")))
 	if err != nil {
 		http.Error(rw, err.Error(), http.StatusBadRequest)
 	} else {
-		save := r.URL.Query().Get("save")
-		if(str2number(save)>0){
-			id := r.URL.Query().Get("streamPath")
-			userId := str2number(r.URL.Query().Get("UserId"))
-			db := 	m7sdb.MysqlDB()
-			var olddevice Device
-
-			db.Where("id = ?", id).First(&olddevice)
-			if(olddevice.ID==""){
-				device := Device{ID: id, Type:1, RegisterTime: time.Now(), UserId: userId}
-				db.Create(&device)
-			}
-			
-		}
 		rw.Write([]byte("ok"))
 	}
 }
