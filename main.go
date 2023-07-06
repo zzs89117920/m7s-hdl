@@ -30,9 +30,17 @@ func pull(streamPath, url string) {
 func (c *HDLConfig) OnEvent(event any) {
 	switch v := event.(type) {
 	case FirstConfig:
-		for streamPath, url := range c.PullOnStart {
-			pull(streamPath, url)
+		var pullDevices []PullDevice
+		db := 	m7sdb.MysqlDB()
+		result := db.Where("type = ?", 2).Find(&pullDevices)
+		if(result.RowsAffected>0){
+			for _, item := range pullDevices {
+				pull(item.StreamPath, item.Target)
+			}
 		}
+		// for streamPath, url := range c.PullOnStart {
+		// 	pull(streamPath, url)
+		// }
 	case *Stream: //按需拉流
 		if url, ok := c.PullOnSub[v.Path]; ok {
 			pull(v.Path, url)
