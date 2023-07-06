@@ -39,8 +39,13 @@ func (c *HDLConfig) OnEvent(event any) {
 		}
 	case SEclose://关闭流
 		streamPath := v.StreamEvent.Target.Path
+		
 		db := 	m7sdb.MysqlDB()
-		db.Model(&PullDevice{}).Where("stream_path = ?", streamPath).Update("status", "2")
+		var count int64
+		db.Model(&PullDevice{}).Where("stream_path = ?", streamPath).Count(&count)
+		if(count > 0){
+			db.Model(&PullDevice{}).Where("stream_path = ?", streamPath).Update("status", "2")
+		}
 	}
 }
 
