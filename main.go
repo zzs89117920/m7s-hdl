@@ -38,10 +38,9 @@ func (c *HDLConfig) OnEvent(event any) {
 			pull(v.Path, url)
 		}
 	case SEclose://关闭流
-		testPath := v.StreamEvent.Target.Path
+		streamPath := v.StreamEvent.Target.Path
 		db := 	m7sdb.MysqlDB()
-		db.Delete(&Device{}, "id = ?", testPath)
-		HDLPlugin.Info("关闭流", zap.String("testPath", testPath))
+		db.Delete(&PullDevice{}, "streamPath = ?", streamPath)
 	}
 }
 
@@ -56,29 +55,32 @@ func str2number(s string) int {
 	}
 }
 
-type Device struct {
+type PullDevice struct {
 	ID string
 	Type int
-	RegisterTime time.Time
+	StreamPath string
+	Target string
+	IsRecord bool
+	CreateTime time.Time
 	UserId int
 }
 func (c *HDLConfig) API_Pull(rw http.ResponseWriter, r *http.Request) {
-	err := HDLPlugin.Pull(r.URL.Query().Get("streamPath"), r.URL.Query().Get("target"), NewHDLPuller(), str2number(r.URL.Query().Get("save")))
+	streamPath := r.URL.Query().Get("streamPath")
+	target := r.URL.Query().Get("target")
+	err := HDLPlugin.Pull(streamPath, target, NewHDLPuller(), str2number(r.URL.Query().Get("save")))
 	if err != nil {
 		http.Error(rw, err.Error(), http.StatusBadRequest)
 	} else {
 		save := r.URL.Query().Get("save")
 		if(str2number(save)>0){
-			id := r.URL.Query().Get("streamPath")
 			userId := str2number(r.URL.Query().Get("UserId"))
 			db := 	m7sdb.MysqlDB()
 			var count int64
-			db.Model(&Device{}).Where("id = ?", id).Count(&count)
+			db.Model(&PullDevice{}).Where("streamPath = ?", streamPath).Count(&count)
 			if(count==0){
-				device := Device{ID: id, Type:1, RegisterTime: time.Now(), UserId: userId}
+				device := PullDevice{ Type:2, CreateTime: time.Now(), UserId: userId, IsRecord:false, StreamPath:streamPath, Target: target }
 				db.Create(&device)
 			}
-			
 		}
 		rw.Write([]byte("ok"))
 	}
