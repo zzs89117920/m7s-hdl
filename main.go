@@ -40,7 +40,7 @@ func (c *HDLConfig) OnEvent(event any) {
 	case SEclose://关闭流
 		streamPath := v.StreamEvent.Target.Path
 		db := 	m7sdb.MysqlDB()
-		db.Delete(&PullDevice{}, "streamPath = ?", streamPath)
+		db.Model(&PullDevice{}).Where("streamPath = ?", streamPath).Update("status", "2")
 	}
 }
 
@@ -63,6 +63,7 @@ type PullDevice struct {
 	IsRecord bool
 	CreateTime time.Time
 	UserId int
+	Status int
 }
 func (c *HDLConfig) API_Pull(rw http.ResponseWriter, r *http.Request) {
 	streamPath := r.URL.Query().Get("streamPath")
@@ -78,7 +79,7 @@ func (c *HDLConfig) API_Pull(rw http.ResponseWriter, r *http.Request) {
 			var count int64
 			db.Model(&PullDevice{}).Where("streamPath = ?", streamPath).Count(&count)
 			if(count==0){
-				device := PullDevice{ Type:2, CreateTime: time.Now(), UserId: userId, IsRecord:false, StreamPath:streamPath, Target: target }
+				device := PullDevice{ Type:2, CreateTime: time.Now(), UserId: userId, IsRecord:false, StreamPath:streamPath, Target: target, Status:1 }
 				db.Create(&device)
 			}
 		}
