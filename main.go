@@ -30,9 +30,17 @@ func pull(streamPath, url string) {
 func (c *HDLConfig) OnEvent(event any) {
 	switch v := event.(type) {
 	case FirstConfig:
-		for streamPath, url := range c.PullOnStart {
-			pull(streamPath, url)
+		var pullDevices []PullDevice
+		db := 	m7sdb.MysqlDB()
+		result := db.Where("type = ? and save = ?", 2, 1).Find(&pullDevices)
+		if(result.RowsAffected>0){
+			for _, item := range pullDevices {
+				pull(item.StreamPath, item.Target)
+			}
 		}
+		// for streamPath, url := range c.PullOnStart {
+		// 	pull(streamPath, url)
+		// }
 	case *Stream: //按需拉流
 		if url, ok := c.PullOnSub[v.Path]; ok {
 			pull(v.Path, url)
@@ -68,22 +76,23 @@ type PullDevice struct {
 	CreateTime time.Time
 	UserId int
 	Status int
+	Save int
 }
 func (c *HDLConfig) API_Pull(rw http.ResponseWriter, r *http.Request) {
 	streamPath := r.URL.Query().Get("streamPath")
 	target := r.URL.Query().Get("target")
+	save :=  str2number(r.URL.Query().Get("save"))
 	err := HDLPlugin.Pull(streamPath, target, NewHDLPuller(), str2number(r.URL.Query().Get("save")))
 	if err != nil {
 		http.Error(rw, err.Error(), http.StatusBadRequest)
 	} else {
-		save := r.URL.Query().Get("save")
-		if(str2number(save)>0){
-			userId := str2number(r.URL.Query().Get("UserId"))
+		if(save>0){
+		
 			db := 	m7sdb.MysqlDB()
 			var count int64
 			db.Model(&PullDevice{}).Where("stream_path = ?", streamPath).Count(&count)
 			if(count==0){
-				device := PullDevice{ Type:2, CreateTime: time.Now(), UserId: userId, IsRecord:false, StreamPath:streamPath, Target: target, Status:1 }
+				device := PullDevice{ Type:2, CreateTime: time.Now(), UserId: 0, IsRecord:false, StreamPath:streamPath, Target: target, Status:1,Save: save }
 				db.Create(&device)
 			}
 		}
